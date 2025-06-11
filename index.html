@@ -1,1 +1,118 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Kikabox – Jukebox Virtuale</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
+      text-align: center;
+      padding: 40px;
+    }
+    h1 {
+      margin-bottom: 30px;
+    }
+    .button-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      max-width: 800px;
+      margin: 0 auto 40px;
+    }
+    a.button {
+      display: block;
+      padding: 20px;
+      background: #007bff;
+      color: white;
+      text-decoration: none;
+      border-radius: 12px;
+      transition: background 0.3s;
+    }
+    a.button:hover {
+      background: #0056b3;
+    }
+    #annunciPubblici {
+      margin-top: 40px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+      text-align: left;
+    }
+    #annunciPubblici ul {
+      padding-left: 0;
+      list-style-type: none;
+    }
+    #annunciPubblici li {
+      background: #fff;
+      margin-bottom: 10px;
+      padding: 10px;
+      border-left: 5px solid #007bff;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+  </style>
+
+  <!-- Firebase SDK (lettura annunci) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <h1>Kikabox – Jukebox Virtuale</h1>
+
+  <div class="button-grid">
+    <a class="button" href="ascolto.html">🎵 Richieste di ascolto</a>
+    <a class="button" href="karaoke.html">🎤 Karaoke</a>
+    <a class="button" href="chat.html">💬 Chat pubblica</a>
+    <a class="button" href="private.html">🗨️ Chat privata</a>
+    <a class="button" href="voti.html">🗳️ Votazioni</a>
+    <a class="button" href="suggerimenti.html">💡 Suggerimenti</a>
+    <a class="button" href="annunci.html">📢 Annunci</a>
+    <a class="button" href="manager.html">🎛️ Area manager</a>
+  </div>
+
+  <!-- Annunci pubblici -->
+  <div id="annunciPubblici">
+    <h2>📢 Annunci</h2>
+    <ul id="listaAnnunciPubblici">
+      <li>Caricamento annunci...</li>
+    </ul>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAd86VRjAKDRO35FmkIBpezjWNjjyt1k-Y",
+      authDomain: "kikabox-7a71b.firebaseapp.com",
+      projectId: "kikabox-7a71b",
+      storageBucket: "kikabox-7a71b.appspot.com",
+      messagingSenderId: "921138873322",
+      appId: "1:921138873322:web:148bad4db454d57bbaa893",
+      measurementId: "G-V27WV50TBE"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const lista = document.getElementById("listaAnnunciPubblici");
+
+    function mostraAnnunciPubblici() {
+      db.collection("annunci").orderBy("timestamp", "desc").limit(5).onSnapshot(snapshot => {
+        lista.innerHTML = "";
+        if (snapshot.empty) {
+          lista.innerHTML = "<li>Nessun annuncio al momento.</li>";
+        } else {
+          snapshot.forEach(doc => {
+            const a = doc.data();
+            const dataOra = new Date(a.timestamp).toLocaleString("it-IT");
+            const li = document.createElement("li");
+            li.innerHTML = `<strong>${dataOra}</strong><br/>${a.testo}`;
+            lista.appendChild(li);
+          });
+        }
+      });
+    }
+
+    mostraAnnunciPubblici();
+  </script>
+</body>
+</html>
 <!-- Pagina principale con richieste, voti, chat, suggerimenti -->
