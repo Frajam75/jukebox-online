@@ -102,8 +102,9 @@
       if (!nomeUtente) return alert("Inserisci il tuo nome per entrare nella stanza.");
 
       if (stanza === "pubblica") {
-        accessoNegato.style.display = "none";
-        chatContent.style.display = "block";
+      accesso.style.display = "none";
+      accessoNegato.style.display = "none";
+      chatContent.style.display = "block";
         caricaMessaggi();
         return;
       }
