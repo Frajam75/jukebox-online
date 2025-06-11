@@ -1,1 +1,197 @@
-<!-- Manager per monitorare richieste, voti, annunci -->
+<!-- Manager per monitorare richieste, voti, annunci --><!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Kikabox Manager</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #fafafa; }
+    h1 { text-align: center; }
+    .section { margin-top: 30px; padding: 20px; border: 1px solid #ccc; border-radius: 10px; background: #fff; }
+    #loginSection { max-width: 400px; margin: 0 auto; }
+    input, textarea, select { display: block; width: 100%; margin-bottom: 10px; padding: 10px; border-radius: 8px; border: 1px solid #ccc; }
+    button { padding: 10px 20px; cursor: pointer; margin-top: 5px; }
+    .hidden { display: none; }
+    table { width: 100%; margin-top: 10px; border-collapse: collapse; }
+    th, td { padding: 8px; border: 1px solid #ccc; }
+    th { background-color: #eee; }
+  </style>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <h1>Area Manager – Kikabox</h1>
+
+  <!-- Login form -->
+  <div id="loginSection">
+    <h2>Accesso riservato</h2>
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <button onclick="login()">Accedi</button>
+    <p id="loginError" style="color: red;"></p>
+  </div>
+
+  <!-- Area manager -->
+  <div id="managerArea" class="hidden">
+    <button onclick="logout()">Esci</button>
+
+    <!-- Richieste di ascolto -->
+    <div class="section" id="ascoltoSection">
+      <h2>🎵 Richieste di ascolto</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Richiedente</th>
+            <th>Artista</th>
+            <th>Titolo</th>
+            <th>Dedica</th>
+            <th>Data/Ora</th>
+            <th>Azioni</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyRichieste"></tbody>
+      </table>
+    </div>
+
+    <!-- Annunci -->
+    <div class="section" id="annunciSection">
+      <h2>📢 Annunci</h2>
+
+      <textarea id="testoAnnuncio" placeholder="Scrivi un annuncio..." rows="3"></textarea>
+      <button onclick="pubblicaAnnuncio()">Pubblica annuncio</button>
+
+      <h3>Annunci pubblicati</h3>
+      <ul id="listaAnnunci"></ul>
+    </div>
+
+    <!-- Altri moduli (vuoti per ora) -->
+    <div class="section" id="karaokeSection"><h2>🎤 Richieste karaoke</h2></div>
+    <div class="section" id="chatSection"><h2>💬 Chat</h2></div>
+    <div class="section" id="votiSection"><h2>🗳️ Voti karaoke</h2></div>
+    <div class="section" id="suggerimentiSection"><h2>💡 Suggerimenti</h2></div>
+  </div>
+
+  <script>
+    // 🔐 Configurazione Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyAd86VRjAKDRO35FmkIBpezjWNjjyt1k-Y",
+      authDomain: "kikabox-7a71b.firebaseapp.com",
+      projectId: "kikabox-7a71b",
+      storageBucket: "kikabox-7a71b.appspot.com",
+      messagingSenderId: "921138873322",
+      appId: "1:921138873322:web:148bad4db454d57bbaa893",
+      measurementId: "G-V27WV50TBE"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // 👤 Login / Logout
+    function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      auth.signInWithEmailAndPassword(email, password)
+        .catch(error => {
+          document.getElementById('loginError').innerText = error.message;
+        });
+    }
+
+    function logout() {
+      auth.signOut();
+    }
+
+    // 🔁 Cambiamento stato utente
+    auth.onAuthStateChanged(user => {
+      const loginSection = document.getElementById('loginSection');
+      const managerArea = document.getElementById('managerArea');
+      if (user) {
+        loginSection.classList.add('hidden');
+        managerArea.classList.remove('hidden');
+        caricaRichiesteAscolto();
+        caricaAnnunci();
+      } else {
+        loginSection.classList.remove('hidden');
+        managerArea.classList.add('hidden');
+      }
+    });
+
+    // 📄 Richieste di ascolto
+    const tbodyRichieste = document.getElementById("tbodyRichieste");
+
+    function formatData(isoString) {
+      const d = new Date(isoString);
+      return d.toLocaleString("it-IT");
+    }
+
+    function caricaRichiesteAscolto() {
+      db.collection("richieste_ascolto").orderBy("timestamp", "desc").onSnapshot(snapshot => {
+        tbodyRichieste.innerHTML = "";
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${data.richiedente || "-"}</td>
+            <td>${data.artista}</td>
+            <td>${data.titolo}</td>
+            <td>${data.dedica || ""}</td>
+            <td>${formatData(data.timestamp)}</td>
+            <td><button onclick="eliminaRichiesta('${doc.id}')">🗑</button></td>
+          `;
+          tbodyRichieste.appendChild(tr);
+        });
+      });
+    }
+
+    function eliminaRichiesta(id) {
+      if (confirm("Vuoi eliminare questa richiesta?")) {
+        db.collection("richieste_ascolto").doc(id).delete()
+          .catch(err => console.error("Errore eliminazione:", err));
+      }
+    }
+
+    // 📢 Annunci
+    const listaAnnunci = document.getElementById("listaAnnunci");
+
+    function pubblicaAnnuncio() {
+      const testo = document.getElementById("testoAnnuncio").value.trim();
+      if (!testo) return alert("Scrivi un messaggio prima di pubblicare.");
+
+      db.collection("annunci").add({
+        testo,
+        timestamp: new Date().toISOString(),
+        autore: auth.currentUser?.email || "anonimo"
+      }).then(() => {
+        document.getElementById("testoAnnuncio").value = "";
+      });
+    }
+
+    function caricaAnnunci() {
+      db.collection("annunci").orderBy("timestamp", "desc").onSnapshot(snapshot => {
+        listaAnnunci.innerHTML = "";
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const dataOra = new Date(data.timestamp).toLocaleString("it-IT");
+
+          const li = document.createElement("li");
+          li.innerHTML = `
+            <strong>${data.autore || "Anonimo"}</strong> – <em>${dataOra}</em><br/>
+            ${data.testo}
+            <br/><button onclick="eliminaAnnuncio('${doc.id}')">🗑 Elimina</button>
+            <hr/>
+          `;
+          listaAnnunci.appendChild(li);
+        });
+      });
+    }
+
+    function eliminaAnnuncio(id) {
+      if (confirm("Vuoi eliminare questo annuncio?")) {
+        db.collection("annunci").doc(id).delete();
+      }
+    }
+  </script>
+</body>
+</html>
