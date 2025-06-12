@@ -65,7 +65,6 @@
     function caricaMessaggi() {
       db.collection("chat")
         .where("stanza", "==", "pubblica")
-        .orderBy("timestamp", "asc")
         .onSnapshot(snapshot => {
           console.log("📡 Ricevuti", snapshot.size, "messaggi");
           messaggi.innerHTML = "";
