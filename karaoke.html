@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Richiesta Karaoke – Kikabox</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f2f2f2; }
+    h1 { text-align: center; }
+    #container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px #ccc; }
+    input, button, select, textarea { width: 100%; padding: 10px; margin: 10px 0; border-radius: 5px; border: 1px solid #ccc; }
+    button { background: #28a745; color: white; border: none; cursor: pointer; }
+    button:hover { background: #218838; }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <div id="container">
+    <h1>🎤 Richiedi una Canzone Karaoke</h1>
+    <input type="text" id="filtro" placeholder="Cerca artista o titolo..." oninput="filtraBrani()" />
+    <select id="listaBrani" size="10"></select>
+    <input type="text" id="richiedente" placeholder="Chi la canta?" />
+    <textarea id="dedica" placeholder="Dedica (opzionale)"></textarea>
+    <button onclick="inviaRichiesta()">Invia Richiesta</button>
+  </div>
+
+  <script>
+    const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCcLo6udOD0fJCezTNk_VgiJ8aXTjTD50Lx81fZYtJHGUp22ulBkcbncfuwbPcBw/pub?output=csv";
+    let brani = [];
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAd86VRjAKDRO35FmkIBpezjWNjjyt1k-Y",
+      authDomain: "kikabox-7a71b.firebaseapp.com",
+      projectId: "kikabox-7a71b",
+      storageBucket: "kikabox-7a71b.appspot.com",
+      messagingSenderId: "921138873322",
+      appId: "1:921138873322:web:148bad4db454d57bbaa893"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    fetch(csvUrl)
+      .then(res => res.text())
+      .then(data => {
+        const rows = data.split("\n").slice(1);
+        brani = rows.map(r => {
+          const [artista, titolo] = r.split(",");
+          return { artista: artista?.trim(), titolo: titolo?.trim() };
+        }).filter(b => b.artista && b.titolo);
+        aggiornaLista();
+      });
+
+    function filtraBrani() {
+      const query = document.getElementById("filtro").value.toLowerCase();
+      const filtrati = brani.filter(b => b.titolo.toLowerCase().includes(query) || b.artista.toLowerCase().includes(query));
+      aggiornaLista(filtrati);
+    }
+
+    function aggiornaLista(lista = brani) {
+      const select = document.getElementById("listaBrani");
+      select.innerHTML = "";
+      lista.forEach(b => {
+        const option = document.createElement("option");
+        option.value = `${b.artista} - ${b.titolo}`;
+        option.textContent = `${b.artista} - ${b.titolo}`;
+        select.appendChild(option);
+      });
+    }
+
+    function inviaRichiesta() {
+      const select = document.getElementById("listaBrani");
+      const richiedente = document.getElementById("richiedente").value.trim();
+      const dedica = document.getElementById("dedica").value.trim();
+
+      if (!select.value || !richiedente) return alert("Seleziona un brano e indica chi lo canterà.");
+
+      db.collection("karaoke").add({
+        brano: select.value,
+        richiedente: richiedente,
+        dedica: dedica,
+        fatto: false,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        alert("Richiesta inviata!");
+        document.getElementById("richiedente").value = "";
+        document.getElementById("dedica").value = "";
+      });
+    }
+  </script>
+</body>
+</html>
