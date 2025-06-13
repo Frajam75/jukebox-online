@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Richieste di ascolto – Kikabox</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 30px;
+      text-align: center;
+    }
+    form {
+      background: white;
+      padding: 20px;
+      max-width: 400px;
+      margin: 0 auto;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    select, input, textarea, button {
+      width: 100%;
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      cursor: pointer;
+      border: none;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+  </style>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <h1>🎵 Richiesta di Ascolto</h1>
+  <form id="ascoltoForm">
+    <input type="text" id="richiedente" placeholder="Il tuo nome (richiedente)" required />
+
+    <select id="artista" required>
+      <option value="">Seleziona artista</option>
+    </select>
+
+    <select id="brano" required>
+      <option value="">Seleziona brano</option>
+    </select>
+
+    <textarea id="dedica" placeholder="Dedica (opzionale)"></textarea>
+    <button type="submit">Invia richiesta</button>
+    <p id="messaggio"></p>
+  </form>
+
+  <script>
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyAd86VRjAKDRO35FmkIBpezjWNjjyt1k-Y",
+      authDomain: "kikabox-7a71b.firebaseapp.com",
+      projectId: "kikabox-7a71b",
+      storageBucket: "kikabox-7a71b.appspot.com",
+      messagingSenderId: "921138873322",
+      appId: "1:921138873322:web:148bad4db454d57bbaa893",
+      measurementId: "G-V27WV50TBE"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const artistSelect = document.getElementById('artista');
+    const branoSelect = document.getElementById('brano');
+    const form = document.getElementById('ascoltoForm');
+    const messaggio = document.getElementById('messaggio');
+
+    let elenco = []; // [{ artista, titolo }]
+    let artistiUnici = [];
+    let titoliUnici = [];
+
+    async function caricaCSV() {
+      const urlCSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCcLo6udOD0fJCezTNk_VgiJ8aXTjTD50Lx81fZYtJHGUp22ulBkcbncfuwbPcBw/pub?output=csv";
+      const response = await fetch(urlCSV);
+      const testo = await response.text();
+      const righe = testo.split("\n").slice(1); // salta intestazione
+
+      elenco = [];
+      righe.forEach(riga => {
+        const [artista, titolo] = riga.split(",").map(x => x.trim());
+        if (artista && titolo) {
+          elenco.push({ artista, titolo });
+        }
+      });
+
+      // Artisti unici
+      artistiUnici = [...new Set(elenco.map(x => x.artista))].sort();
+      artistiUnici.forEach(artista => {
+        const opt = document.createElement("option");
+        opt.value = artista;
+        opt.textContent = artista;
+        artistSelect.appendChild(opt);
+      });
+
+      // Titoli unici
+      titoliUnici = [...new Set(elenco.map(x => x.titolo))].sort();
+      titoliUnici.forEach(titolo => {
+        const opt = document.createElement("option");
+        opt.value = titolo;
+        opt.textContent = titolo;
+        branoSelect.appendChild(opt);
+      });
+    }
+
+    // Selezione artista → aggiorna titoli
+    artistSelect.addEventListener("change", () => {
+      const artista = artistSelect.value;
+      const titoli = elenco.filter(x => x.artista === artista).map(x => x.titolo);
+
+      branoSelect.innerHTML = '<option value="">Seleziona brano</option>';
+      titoli.forEach(titolo => {
+        const opt = document.createElement("option");
+        opt.value = titolo;
+        opt.textContent = titolo;
+        branoSelect.appendChild(opt);
+      });
+    });
+
+    // Selezione titolo → imposta artista
+    branoSelect.addEventListener("change", () => {
+      const titolo = branoSelect.value;
+      const entry = elenco.find(x => x.titolo === titolo);
+      if (entry) {
+        artistSelect.value = entry.artista;
+
+        // aggiorna titoli per l'artista (evita errori se prima era cambiato)
+        const titoli = elenco.filter(x => x.artista === entry.artista).map(x => x.titolo);
+        branoSelect.innerHTML = '<option value="">Seleziona brano</option>';
+        titoli.forEach(tit => {
+          const opt = document.createElement("option");
+          opt.value = tit;
+          opt.textContent = tit;
+          branoSelect.appendChild(opt);
+        });
+        branoSelect.value = titolo;
+      }
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const artista = artistSelect.value;
+      const brano = branoSelect.value;
+      const dedica = document.getElementById('dedica').value;
+      const richiedente = document.getElementById('richiedente').value;
+
+      try {
+        await db.collection("richieste_ascolto").add({
+          artista,
+          titolo: brano,
+          dedica,
+          richiedente,
+          timestamp: new Date().toISOString()
+        });
+        messaggio.textContent = "✅ Richiesta inviata!";
+        form.reset();
+        branoSelect.innerHTML = '<option value="">Seleziona brano</option>';
+      } catch (err) {
+        console.error(err);
+        messaggio.textContent = "❌ Errore nell'invio.";
+      }
+    });
+
+    caricaCSV();
+  </script>
+</body>
+</html>
