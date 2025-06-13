@@ -23,6 +23,7 @@
   <h1>🎛️ Manager Kikabox</h1>
   <nav>
     <button onclick="mostra('karaoke')">Karaoke</button>
+    <button onclick="mostra('ascolto')">Ascolto</button>
     <button onclick="mostra('annunci')">Annunci</button>
     <button onclick="mostra('altro')">Altro</button>
   </nav>
@@ -37,9 +38,20 @@
     </table>
   </section>
 
+  <section id="ascolto">
+    <h2>🎧 Richieste di Ascolto</h2>
+    <button onclick="esportaCSV()">📥 Esporta CSV</button>
+    <table>
+      <thead>
+        <tr><th>Artista</th><th>Titolo</th><th>Richiedente</th><th>Dedica</th><th>Fatto</th></tr>
+      </thead>
+      <tbody id="tabellaAscolto"></tbody>
+    </table>
+  </section>
+
   <section id="annunci">
-    <h2>📢 Annunci (da implementare)</h2>
-    <!-- Altre funzionalità -->
+    <h2>📢 Annunci</h2>
+    <ul id="listaAnnunci"></ul>
   </section>
 
   <section id="altro">
@@ -64,27 +76,72 @@
       document.getElementById(id).classList.add('active');
     }
 
-    const tabella = document.getElementById("tabellaKaraoke");
+    const tabellaKaraoke = document.getElementById("tabellaKaraoke");
     db.collection("karaoke").orderBy("timestamp", "asc").onSnapshot(snapshot => {
-      tabella.innerHTML = "";
+      tabellaKaraoke.innerHTML = "";
       snapshot.forEach(doc => {
         const dati = doc.data();
         const tr = document.createElement("tr");
         if (dati.fatto) tr.classList.add("done");
-
         tr.innerHTML = `
           <td>${dati.brano}</td>
           <td>${dati.richiedente}</td>
           <td>${dati.dedica || ""}</td>
-          <td><input type='checkbox' ${dati.fatto ? "checked" : ""} onchange='aggiornaFatto("${doc.id}", this.checked)' /></td>
+          <td><input type='checkbox' ${dati.fatto ? "checked" : ""} onchange='aggiornaFatto("karaoke", "${doc.id}", this.checked)' /></td>
         `;
-        tabella.appendChild(tr);
+        tabellaKaraoke.appendChild(tr);
       });
     });
 
-    function aggiornaFatto(id, stato) {
-      db.collection("karaoke").doc(id).update({ fatto: stato });
+    const tabellaAscolto = document.getElementById("tabellaAscolto");
+    const datiAscolto = [];
+    db.collection("ascolto").orderBy("timestamp", "asc").onSnapshot(snapshot => {
+      tabellaAscolto.innerHTML = "";
+      datiAscolto.length = 0;
+      snapshot.forEach(doc => {
+        const dati = doc.data();
+        datiAscolto.push({ id: doc.id, ...dati });
+        const tr = document.createElement("tr");
+        if (dati.fatto) tr.classList.add("done");
+        tr.innerHTML = `
+          <td>${dati.artista}</td>
+          <td>${dati.titolo}</td>
+          <td>${dati.richiedente}</td>
+          <td>${dati.dedica || ""}</td>
+          <td><input type='checkbox' ${dati.fatto ? "checked" : ""} onchange='aggiornaFatto("ascolto", "${doc.id}", this.checked)' /></td>
+        `;
+        tabellaAscolto.appendChild(tr);
+      });
+    });
+
+    function aggiornaFatto(collezione, id, stato) {
+      db.collection(collezione).doc(id).update({ fatto: stato });
     }
+
+    function esportaCSV() {
+      const righe = ["Artista,Titolo,Richiedente,Dedica,Fatto"];
+      datiAscolto.forEach(d => {
+        righe.push(`"${d.artista}","${d.titolo}","${d.richiedente}","${d.dedica || ''}","${d.fatto ? 'SI' : 'NO'}"`);
+      });
+      const blob = new Blob([righe.join("\n")], { type: "text/csv" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "richieste_ascolto.csv";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    const listaAnnunci = document.getElementById("listaAnnunci");
+    db.collection("annunci").orderBy("timestamp", "desc").onSnapshot(snapshot => {
+      listaAnnunci.innerHTML = "";
+      snapshot.forEach(doc => {
+        const a = doc.data();
+        const li = document.createElement("li");
+        li.textContent = `${a.testo} (${new Date(a.timestamp?.toDate()).toLocaleTimeString("it-IT")})`;
+        listaAnnunci.appendChild(li);
+      });
+    });
   </script>
 </body>
 </html>
