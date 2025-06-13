@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat Privata – Kikabox</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f9f9f9; }
+    h1 { text-align: center; }
+    #chatBox { max-width: 600px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px #ccc; }
+    #messaggi { height: 300px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; margin-bottom: 15px; background: #fafafa; }
+    .msg { margin-bottom: 10px; }
+    .msg small { color: #555; }
+    input, button, textarea { padding: 10px; border-radius: 5px; border: 1px solid #ccc; width: 100%; margin-top: 10px; }
+    button { background: #007bff; color: white; border: none; cursor: pointer; }
+    button:hover { background: #0056b3; }
+    #accessoNegato { color: red; text-align: center; display: none; }
+  </style>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <div id="chatBox">
+    <h1>🔒 Chat Privata</h1>
+
+    <h3>Crea una nuova stanza</h3>
+    <input type="text" id="nuovaStanza" placeholder="Nome stanza" />
+    <textarea id="partecipanti" placeholder="Nomi partecipanti separati da virgola"></textarea>
+    <button onclick="creaStanza()">Crea stanza</button>
+    <hr />
+
+    <h3>Accedi a una stanza</h3>
+    <input type="text" id="nome" placeholder="Il tuo nome" />
+    <button onclick="controllaAccesso()">Entra</button>
+    <div id="accessoNegato">⛔ Accesso negato: non sei stato invitato a questa stanza.</div>
+
+    <div id="chatContent" style="display: none;">
+      <div id="messaggi"></div>
+      <input type="text" id="testo" placeholder="Scrivi un messaggio..." />
+      <button onclick="inviaMessaggio()">Invia</button>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAd86VRjAKDRO35FmkIBpezjWNjjyt1k-Y",
+      authDomain: "kikabox-7a71b.firebaseapp.com",
+      projectId: "kikabox-7a71b",
+      storageBucket: "kikabox-7a71b.appspot.com",
+      messagingSenderId: "921138873322",
+      appId: "1:921138873322:web:148bad4db454d57bbaa893"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const FieldValue = firebase.firestore.FieldValue;
+
+    const messaggi = document.getElementById('messaggi');
+    const testo = document.getElementById('testo');
+    const nome = document.getElementById('nome');
+    const chatContent = document.getElementById('chatContent');
+    const accessoNegato = document.getElementById('accessoNegato');
+
+    const params = new URLSearchParams(window.location.search);
+    const stanza = params.get("stanza") || "";
+
+    let unsubscribe = null;
+    let nomeUtente = "";
+
+    function creaStanza() {
+      const nomeStanza = document.getElementById('nuovaStanza').value.trim();
+      const lista = document.getElementById('partecipanti').value.trim();
+      if (!nomeStanza || !lista) return alert("Compila nome stanza e partecipanti.");
+
+      const partecipanti = lista.split(",").map(n => n.trim()).filter(n => n);
+
+      db.collection("stanze").doc(nomeStanza).set({
+        partecipanti: partecipanti,
+        tipo: "privata"
+      }).then(() => {
+        alert(`Stanza creata! Link: chat-privata.html?stanza=${nomeStanza}`);
+      });
+    }
+
+    function controllaAccesso() {
+      nomeUtente = nome.value.trim();
+      if (!nomeUtente || !stanza) return alert("Inserisci il tuo nome e un parametro ?stanza nel link.");
+
+      db.collection("stanze").doc(stanza).get().then(doc => {
+        if (!doc.exists) {
+          alert("Stanza non trovata");
+          return;
+        }
+        const data = doc.data();
+        if (!data.partecipanti || !data.partecipanti.map(n => n.toLowerCase()).includes(nomeUtente.toLowerCase())) {
+          accessoNegato.style.display = "block";
+          chatContent.style.display = "none";
+        } else {
+          accessoNegato.style.display = "none";
+          chatContent.style.display = "block";
+          caricaMessaggi();
+        }
+      });
+    }
+
+    function inviaMessaggio() {
+      const testoMsg = testo.value.trim();
+      if (!testoMsg) return;
+      db.collection("chat").add({
+        testo: testoMsg,
+        autore: nomeUtente,
+        stanza: stanza,
+        timestamp: FieldValue.serverTimestamp()
+      });
+      testo.value = "";
+    }
+
+    function caricaMessaggi() {
+      if (unsubscribe) unsubscribe();
+      unsubscribe = db.collection("chat")
+        .where("stanza", "==", stanza)
+        .orderBy("timestamp", "asc")
+        .onSnapshot(snapshot => {
+          messaggi.innerHTML = "";
+          snapshot.forEach(doc => {
+            const msg = doc.data();
+            const ora = msg.timestamp?.toDate().toLocaleTimeString("it-IT") || "--:--";
+            const div = document.createElement("div");
+            div.className = "msg";
+
+            // rilevamento invito con @utente
+            let testoHTML = msg.testo;
+            const match = msg.testo.match(/^@([a-zA-Z0-9_]+)/);
+            if (match && nomeUtente.toLowerCase() === match[1].toLowerCase()) {
+              const stanzaPriv = `priv_${msg.autore}_${match[1]}`;
+              testoHTML += `<br><span style='color:green;'>Hai ricevuto un invito privato:</span><br>`;
+              testoHTML += `<button onclick=\"window.open('chat-privata.html?stanza=${stanzaPriv}', '_blank')\">Accetta</button> `;
+              testoHTML += `<button onclick=\"this.parentElement.innerHTML += ' (rifiutato)'\">Rifiuta</button>`;
+            }
+
+            div.innerHTML = `<strong>${msg.autore}</strong> <small>(${ora})</small><br>${testoHTML}`;
+            messaggi.appendChild(div);
+          });
+          messaggi.scrollTop = messaggi.scrollHeight;
+        });
+    }
+  </script>
+</body>
+</html>
