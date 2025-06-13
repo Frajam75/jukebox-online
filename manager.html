@@ -1,197 +1,150 @@
-<!-- Manager per monitorare richieste, voti, annunci -->
 <!DOCTYPE html>
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Kikabox Manager</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat Privata – Kikabox</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; background: #fafafa; }
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f9f9f9; }
     h1 { text-align: center; }
-    .section { margin-top: 30px; padding: 20px; border: 1px solid #ccc; border-radius: 10px; background: #fff; }
-    #loginSection { max-width: 400px; margin: 0 auto; }
-    input, textarea, select { display: block; width: 100%; margin-bottom: 10px; padding: 10px; border-radius: 8px; border: 1px solid #ccc; }
-    button { padding: 10px 20px; cursor: pointer; margin-top: 5px; }
-    .hidden { display: none; }
-    table { width: 100%; margin-top: 10px; border-collapse: collapse; }
-    th, td { padding: 8px; border: 1px solid #ccc; }
-    th { background-color: #eee; }
+    #chatBox { max-width: 600px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px #ccc; }
+    #messaggi { height: 300px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; margin-bottom: 15px; background: #fafafa; }
+    .msg { margin-bottom: 10px; }
+    .msg small { color: #555; }
+    input, button, textarea { padding: 10px; border-radius: 5px; border: 1px solid #ccc; width: 100%; margin-top: 10px; }
+    button { background: #007bff; color: white; border: none; cursor: pointer; }
+    button:hover { background: #0056b3; }
+    #accessoNegato { color: red; text-align: center; display: none; }
   </style>
 
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
-  <h1>Area Manager – Kikabox</h1>
+  <div id="chatBox">
+    <h1>🔒 Chat Privata</h1>
 
-  <!-- Login form -->
-  <div id="loginSection">
-    <h2>Accesso riservato</h2>
-    <input type="email" id="email" placeholder="Email" />
-    <input type="password" id="password" placeholder="Password" />
-    <button onclick="login()">Accedi</button>
-    <p id="loginError" style="color: red;"></p>
-  </div>
+    <h3>Crea una nuova stanza</h3>
+    <input type="text" id="nuovaStanza" placeholder="Nome stanza" />
+    <textarea id="partecipanti" placeholder="Nomi partecipanti separati da virgola"></textarea>
+    <button onclick="creaStanza()">Crea stanza</button>
+    <hr />
 
-  <!-- Area manager -->
-  <div id="managerArea" class="hidden">
-    <button onclick="logout()">Esci</button>
+    <h3>Accedi a una stanza</h3>
+    <input type="text" id="nome" placeholder="Il tuo nome" />
+    <button onclick="controllaAccesso()">Entra</button>
+    <div id="accessoNegato">⛔ Accesso negato: non sei stato invitato a questa stanza.</div>
 
-    <!-- Richieste di ascolto -->
-    <div class="section" id="ascoltoSection">
-      <h2>🎵 Richieste di ascolto</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Richiedente</th>
-            <th>Artista</th>
-            <th>Titolo</th>
-            <th>Dedica</th>
-            <th>Data/Ora</th>
-            <th>Azioni</th>
-          </tr>
-        </thead>
-        <tbody id="tbodyRichieste"></tbody>
-      </table>
+    <div id="chatContent" style="display: none;">
+      <div id="messaggi"></div>
+      <input type="text" id="testo" placeholder="Scrivi un messaggio..." />
+      <button onclick="inviaMessaggio()">Invia</button>
     </div>
-
-    <!-- Annunci -->
-    <div class="section" id="annunciSection">
-      <h2>📢 Annunci</h2>
-
-      <textarea id="testoAnnuncio" placeholder="Scrivi un annuncio..." rows="3"></textarea>
-      <button onclick="pubblicaAnnuncio()">Pubblica annuncio</button>
-
-      <h3>Annunci pubblicati</h3>
-      <ul id="listaAnnunci"></ul>
-    </div>
-
-    <!-- Altri moduli (vuoti per ora) -->
-    <div class="section" id="karaokeSection"><h2>🎤 Richieste karaoke</h2></div>
-    <div class="section" id="chatSection"><h2>💬 Chat</h2></div>
-    <div class="section" id="votiSection"><h2>🗳️ Voti karaoke</h2></div>
-    <div class="section" id="suggerimentiSection"><h2>💡 Suggerimenti</h2></div>
   </div>
 
   <script>
-    // 🔐 Configurazione Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyAd86VRjAKDRO35FmkIBpezjWNjjyt1k-Y",
       authDomain: "kikabox-7a71b.firebaseapp.com",
       projectId: "kikabox-7a71b",
       storageBucket: "kikabox-7a71b.appspot.com",
       messagingSenderId: "921138873322",
-      appId: "1:921138873322:web:148bad4db454d57bbaa893",
-      measurementId: "G-V27WV50TBE"
+      appId: "1:921138873322:web:148bad4db454d57bbaa893"
     };
+
     firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
     const db = firebase.firestore();
+    const FieldValue = firebase.firestore.FieldValue;
 
-    // 👤 Login / Logout
-    function login() {
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-      auth.signInWithEmailAndPassword(email, password)
-        .catch(error => {
-          document.getElementById('loginError').innerText = error.message;
-        });
-    }
+    const messaggi = document.getElementById('messaggi');
+    const testo = document.getElementById('testo');
+    const nome = document.getElementById('nome');
+    const chatContent = document.getElementById('chatContent');
+    const accessoNegato = document.getElementById('accessoNegato');
 
-    function logout() {
-      auth.signOut();
-    }
+    const params = new URLSearchParams(window.location.search);
+    const stanza = params.get("stanza") || "";
 
-    // 🔁 Cambiamento stato utente
-    auth.onAuthStateChanged(user => {
-      const loginSection = document.getElementById('loginSection');
-      const managerArea = document.getElementById('managerArea');
-      if (user) {
-        loginSection.classList.add('hidden');
-        managerArea.classList.remove('hidden');
-        caricaRichiesteAscolto();
-        caricaAnnunci();
-      } else {
-        loginSection.classList.remove('hidden');
-        managerArea.classList.add('hidden');
-      }
-    });
+    let unsubscribe = null;
+    let nomeUtente = "";
 
-    // 📄 Richieste di ascolto
-    const tbodyRichieste = document.getElementById("tbodyRichieste");
+    function creaStanza() {
+      const nomeStanza = document.getElementById('nuovaStanza').value.trim();
+      const lista = document.getElementById('partecipanti').value.trim();
+      if (!nomeStanza || !lista) return alert("Compila nome stanza e partecipanti.");
 
-    function formatData(isoString) {
-      const d = new Date(isoString);
-      return d.toLocaleString("it-IT");
-    }
+      const partecipanti = lista.split(",").map(n => n.trim()).filter(n => n);
 
-    function caricaRichiesteAscolto() {
-      db.collection("richieste_ascolto").orderBy("timestamp", "desc").onSnapshot(snapshot => {
-        tbodyRichieste.innerHTML = "";
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td>${data.richiedente || "-"}</td>
-            <td>${data.artista}</td>
-            <td>${data.titolo}</td>
-            <td>${data.dedica || ""}</td>
-            <td>${formatData(data.timestamp)}</td>
-            <td><button onclick="eliminaRichiesta('${doc.id}')">🗑</button></td>
-          `;
-          tbodyRichieste.appendChild(tr);
-        });
-      });
-    }
-
-    function eliminaRichiesta(id) {
-      if (confirm("Vuoi eliminare questa richiesta?")) {
-        db.collection("richieste_ascolto").doc(id).delete()
-          .catch(err => console.error("Errore eliminazione:", err));
-      }
-    }
-
-    // 📢 Annunci
-    const listaAnnunci = document.getElementById("listaAnnunci");
-
-    function pubblicaAnnuncio() {
-      const testo = document.getElementById("testoAnnuncio").value.trim();
-      if (!testo) return alert("Scrivi un messaggio prima di pubblicare.");
-
-      db.collection("annunci").add({
-        testo,
-        timestamp: new Date().toISOString(),
-        autore: auth.currentUser?.email || "anonimo"
+      db.collection("stanze").doc(nomeStanza).set({
+        partecipanti: partecipanti,
+        tipo: "privata"
       }).then(() => {
-        document.getElementById("testoAnnuncio").value = "";
+        alert(`Stanza creata! Link: chat-privata.html?stanza=${nomeStanza}`);
       });
     }
 
-    function caricaAnnunci() {
-      db.collection("annunci").orderBy("timestamp", "desc").onSnapshot(snapshot => {
-        listaAnnunci.innerHTML = "";
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          const dataOra = new Date(data.timestamp).toLocaleString("it-IT");
+    function controllaAccesso() {
+      nomeUtente = nome.value.trim();
+      if (!nomeUtente || !stanza) return alert("Inserisci il tuo nome e un parametro ?stanza nel link.");
 
-          const li = document.createElement("li");
-          li.innerHTML = `
-            <strong>${data.autore || "Anonimo"}</strong> – <em>${dataOra}</em><br/>
-            ${data.testo}
-            <br/><button onclick="eliminaAnnuncio('${doc.id}')">🗑 Elimina</button>
-            <hr/>
-          `;
-          listaAnnunci.appendChild(li);
+      db.collection("stanze").doc(stanza).get().then(doc => {
+        if (!doc.exists) {
+          alert("Stanza non trovata");
+          return;
+        }
+        const data = doc.data();
+        if (!data.partecipanti || !data.partecipanti.map(n => n.toLowerCase()).includes(nomeUtente.toLowerCase())) {
+          accessoNegato.style.display = "block";
+          chatContent.style.display = "none";
+        } else {
+          accessoNegato.style.display = "none";
+          chatContent.style.display = "block";
+          caricaMessaggi();
+        }
+      });
+    }
+
+    function inviaMessaggio() {
+      const testoMsg = testo.value.trim();
+      if (!testoMsg) return;
+      db.collection("chat").add({
+        testo: testoMsg,
+        autore: nomeUtente,
+        stanza: stanza,
+        timestamp: FieldValue.serverTimestamp()
+      });
+      testo.value = "";
+    }
+
+    function caricaMessaggi() {
+      if (unsubscribe) unsubscribe();
+      unsubscribe = db.collection("chat")
+        .where("stanza", "==", stanza)
+        .orderBy("timestamp", "asc")
+        .onSnapshot(snapshot => {
+          messaggi.innerHTML = "";
+          snapshot.forEach(doc => {
+            const msg = doc.data();
+            const ora = msg.timestamp?.toDate().toLocaleTimeString("it-IT") || "--:--";
+            const div = document.createElement("div");
+            div.className = "msg";
+
+            // rilevamento invito con @utente
+            let testoHTML = msg.testo;
+            const match = msg.testo.match(/^@([a-zA-Z0-9_]+)/);
+            if (match && nomeUtente.toLowerCase() === match[1].toLowerCase()) {
+              const stanzaPriv = `priv_${msg.autore}_${match[1]}`;
+              testoHTML += `<br><span style='color:green;'>Hai ricevuto un invito privato:</span><br>`;
+              testoHTML += `<button onclick=\"window.open('chat-privata.html?stanza=${stanzaPriv}', '_blank')\">Accetta</button> `;
+              testoHTML += `<button onclick=\"this.parentElement.innerHTML += ' (rifiutato)'\">Rifiuta</button>`;
+            }
+
+            div.innerHTML = `<strong>${msg.autore}</strong> <small>(${ora})</small><br>${testoHTML}`;
+            messaggi.appendChild(div);
+          });
+          messaggi.scrollTop = messaggi.scrollHeight;
         });
-      });
-    }
-
-    function eliminaAnnuncio(id) {
-      if (confirm("Vuoi eliminare questo annuncio?")) {
-        db.collection("annunci").doc(id).delete();
-      }
     }
   </script>
 </body>
