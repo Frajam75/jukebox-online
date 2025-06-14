@@ -22,10 +22,10 @@
 <body>
   <h1>🎛️ Manager Kikabox</h1>
   <nav>
-    <button onclick="mostra('karaoke')">Karaoke</button>
-    <button onclick="mostra('ascolto')">Ascolto</button>
-    <button onclick="mostra('annunci')">Annunci</button>
-    <button onclick="mostra('altro')">Altro</button>
+    <button id="btnKaraoke">Karaoke</button>
+    <button id="btnAscolto">Ascolto</button>
+    <button id="btnAnnunci">Annunci</button>
+    <button id="btnAltro">Altro</button>
   </nav>
 
   <section id="karaoke" class="active">
@@ -51,6 +51,8 @@
 
   <section id="annunci">
     <h2>📢 Annunci</h2>
+    <textarea id="testoAnnuncio" placeholder="Scrivi un annuncio..." rows="2" style="width:100%;"></textarea>
+    <button onclick="inviaAnnuncio()">📨 Pubblica Annuncio</button>
     <ul id="listaAnnunci"></ul>
   </section>
 
@@ -75,6 +77,11 @@
       document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
       document.getElementById(id).classList.add('active');
     }
+
+    document.getElementById("btnKaraoke").onclick = () => mostra("karaoke");
+    document.getElementById("btnAscolto").onclick = () => mostra("ascolto");
+    document.getElementById("btnAnnunci").onclick = () => mostra("annunci");
+    document.getElementById("btnAltro").onclick = () => mostra("altro");
 
     const tabellaKaraoke = document.getElementById("tabellaKaraoke");
     db.collection("karaoke").orderBy("timestamp", "asc").onSnapshot(snapshot => {
@@ -142,6 +149,17 @@
         listaAnnunci.appendChild(li);
       });
     });
+
+    function inviaAnnuncio() {
+      const testo = document.getElementById("testoAnnuncio").value.trim();
+      if (!testo) return alert("Scrivi un annuncio prima di pubblicare.");
+      db.collection("annunci").add({
+        testo: testo,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        document.getElementById("testoAnnuncio").value = "";
+      });
+    }
   </script>
 </body>
 </html>
