@@ -16,17 +16,32 @@
     section { display: none; }
     section.active { display: block; }
   </style>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js">const tabellaVoti = document.getElementById("tabellaVoti");
+db.collection("voti_karaoke").onSnapshot(snapshot => {
+  const votiAggregati = {};
+  snapshot.forEach(doc => {
+    const { cantante, brano, voto } = doc.data();
+    const chiave = `${cantante}||${brano}`;
+    if (!votiAggregati[chiave]) votiAggregati[chiave] = { somma: 0, count: 0 };
+    votiAggregati[chiave].somma += voto;
+    votiAggregati[chiave].count++;
+  });
+  tabellaVoti.innerHTML = "";
+  for (const chiave in votiAggregati) {
+    const [cantante, brano] = chiave.split("||");
+    const media = (votiAggregati[chiave].somma / votiAggregati[chiave].count).toFixed(2);
+    const row = `<tr><td>${cantante}</td><td>${brano}</td><td>${media}</td><td>${votiAggregati[chiave].count}</td></tr>`;
+    tabellaVoti.innerHTML += row;
+  }
+});
+
+$1
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
   <h1>🎛️ Manager Kikabox</h1>
-  <nav>
-    <button id="btnKaraoke">Karaoke</button>
-    <button id="btnAscolto">Ascolto</button>
-    <button id="btnAnnunci">Annunci</button>
-    <button id="btnAltro">Altro</button>
-  </nav>
+  $1
+    <button id="btnVotazioni">Votazioni</button>
 
   <section id="karaoke" class="active">
     <h2>🎤 Richieste Karaoke</h2>
@@ -57,7 +72,17 @@
     <ul id="listaAnnunci"></ul>
   </section>
 
-  <section id="altro">
+  <section id="votazioni">
+    <h2>🗳️ Votazioni Karaoke</h2>
+    <table>
+      <thead>
+        <tr><th>Cantante</th><th>Brano</th><th>Media voto</th><th>Numero voti</th></tr>
+      </thead>
+      <tbody id="tabellaVoti"></tbody>
+    </table>
+  </section>
+
+$1
     <h2>🧩 Moduli aggiuntivi</h2>
     <!-- Placeholder -->
   </section>
@@ -82,7 +107,8 @@
     document.getElementById("btnKaraoke").onclick = () => mostra("karaoke");
     document.getElementById("btnAscolto").onclick = () => mostra("ascolto");
     document.getElementById("btnAnnunci").onclick = () => mostra("annunci");
-    document.getElementById("btnAltro").onclick = () => mostra("altro");
+    document.getElementById("btnVotazioni").onclick = () => mostra("votazioni");
+$1
 
     const tabellaKaraoke = document.getElementById("tabellaKaraoke");
     db.collection("karaoke").orderBy("timestamp", "asc").onSnapshot(snapshot => {
