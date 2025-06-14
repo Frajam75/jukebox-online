@@ -53,6 +53,7 @@
     <h2>📢 Annunci</h2>
     <textarea id="testoAnnuncio" placeholder="Scrivi un annuncio..." rows="2" style="width:100%;"></textarea>
     <button onclick="inviaAnnuncio()">📨 Pubblica Annuncio</button>
+    <div id="notificaAnnuncio" style="color:green; margin-top:10px; display:none;">✅ Annuncio pubblicato con successo!</div>
     <ul id="listaAnnunci"></ul>
   </section>
 
@@ -158,6 +159,9 @@
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
       }).then(() => {
         document.getElementById("testoAnnuncio").value = "";
+        const notifica = document.getElementById("notificaAnnuncio");
+        notifica.style.display = "block";
+        setTimeout(() => { notifica.style.display = "none"; }, 3000);
       });
     }
   </script>
