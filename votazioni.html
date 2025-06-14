@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Votazioni Karaoke</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f7f7f7; }
+    h1 { text-align: center; }
+    label { display: block; margin-top: 15px; font-weight: bold; }
+    input, select, button { width: 100%; padding: 10px; margin-top: 5px; }
+    button { background: #007bff; color: white; border: none; cursor: pointer; }
+    button:hover { background: #0056b3; }
+    .success { color: green; margin-top: 20px; text-align: center; }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <h1>🗳️ Vota la performance Karaoke</h1>
+
+  <label for="cantante">Chi ha cantato?</label>
+  <input type="text" id="cantante" placeholder="Nome del cantante">
+
+  <label for="brano">Titolo del brano</label>
+  <input type="text" id="brano" placeholder="Titolo del brano eseguito">
+
+  <label>Interpretazione</label>
+  <select id="interpretazione">
+    <option value="">Scegli un voto</option>
+    <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+  </select>
+
+  <label>Scelta del brano</label>
+  <select id="scelta">
+    <option value="">Scegli un voto</option>
+    <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+  </select>
+
+  <label>Tecnica vocale</label>
+  <select id="tecnica">
+    <option value="">Scegli un voto</option>
+    <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+  </select>
+
+  <label coinv>Coinvolgimento</label>
+  <select id="coinvolgimento">
+    <option value="">Scegli un voto</option>
+    <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+  </select>
+
+  <button onclick="inviaVoto()">Invia Voto</button>
+
+  <div id="messaggio" class="success" style="display:none">✅ Voto registrato, grazie!</div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAd86VRjAKDRO35FmkIBpezjWNjjyt1k-Y",
+      authDomain: "kikabox-7a71b.firebaseapp.com",
+      projectId: "kikabox-7a71b",
+      storageBucket: "kikabox-7a71b.appspot.com",
+      messagingSenderId: "921138873322",
+      appId: "1:921138873322:web:148bad4db454d57bbaa893"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    function inviaVoto() {
+      const cantante = document.getElementById('cantante').value.trim();
+      const brano = document.getElementById('brano').value.trim();
+      const interpretazione = parseInt(document.getElementById('interpretazione').value);
+      const scelta = parseInt(document.getElementById('scelta').value);
+      const tecnica = parseInt(document.getElementById('tecnica').value);
+      const coinvolgimento = parseInt(document.getElementById('coinvolgimento').value);
+
+      if (!cantante || !brano || !interpretazione || !scelta || !tecnica || !coinvolgimento) {
+        alert("Compila tutti i campi con valori validi.");
+        return;
+      }
+
+      const chiave = `voto_${cantante}_${brano}`;
+      if (localStorage.getItem(chiave)) {
+        alert("Hai già votato per questa performance.");
+        return;
+      }
+
+      db.collection("voti_karaoke").add({
+        cantante,
+        brano,
+        interpretazione,
+        branoScelto: scelta,
+        tecnica,
+        coinvolgimento,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        localStorage.setItem(chiave, true);
+        document.getElementById('messaggio').style.display = 'block';
+      });
+    }
+  </script>
+</body>
+</html>
