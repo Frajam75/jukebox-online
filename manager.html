@@ -141,12 +141,12 @@
     }
 
     const listaAnnunci = document.getElementById("listaAnnunci");
-    db.collection("annunci").orderBy("timestamp", "desc").onSnapshot(snapshot => {
+    db.collection("annunci").onSnapshot(snapshot => {
       listaAnnunci.innerHTML = "";
       snapshot.forEach(doc => {
         const a = doc.data();
         const li = document.createElement("li");
-        li.textContent = `${a.testo} (${new Date(a.timestamp?.toDate()).toLocaleTimeString("it-IT")})`;
+        li.textContent = a.testo;
         listaAnnunci.appendChild(li);
       });
     });
