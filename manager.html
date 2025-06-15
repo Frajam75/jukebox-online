@@ -45,6 +45,11 @@ $1
 
   <section id="karaoke" class="active">
     <h2>🎤 Richieste Karaoke</h2>
+    <label>
+  <input type="checkbox" id="filtroGara" onchange="aggiornaFiltroKaraoke()" />
+  Mostra solo chi partecipa alla gara
+</label>
+
     <table>
       <thead>
         <tr><th>Brano</th><th>Richiedente</th><th>Dedica</th><th>Eseguito</th><th>In gara</th></tr>
@@ -112,21 +117,34 @@ $1
 $1
 
     const tabellaKaraoke = document.getElementById("tabellaKaraoke");
-    db.collection("karaoke").orderBy("timestamp", "asc").onSnapshot(snapshot => {
-      tabellaKaraoke.innerHTML = "";
-      snapshot.forEach(doc => {
-        const dati = doc.data();
-        const tr = document.createElement("tr");
-        if (dati.fatto) tr.classList.add("done");
-       tr.innerHTML = `
-  <td>${dati.brano}</td>
-  <td>${dati.richiedente}</td>
-  <td>${dati.dedica || ""}</td>
-  <td><input type='checkbox' ${dati.fatto ? "checked" : ""} onchange='aggiornaCampo("karaoke", "${doc.id}", "fatto", this.checked)' /></td>
-  <td><input type='checkbox' ${dati.gara ? "checked" : ""} onchange='aggiornaCampo("karaoke", "${doc.id}", "gara", this.checked)' /></td>
-`;
-       `;
-        tabellaKaraoke.appendChild(tr);
+   let datiKaraoke = [];
+
+function aggiornaFiltroKaraoke() {
+  const soloGara = document.getElementById("filtroGara").checked;
+  tabellaKaraoke.innerHTML = "";
+  datiKaraoke.forEach(({ id, dati }) => {
+    if (soloGara && !dati.gara) return;
+    const tr = document.createElement("tr");
+    if (dati.fatto) tr.classList.add("done");
+    tr.innerHTML = `
+      <td>${dati.brano}</td>
+      <td>${dati.richiedente}</td>
+      <td>${dati.dedica || ""}</td>
+      <td><input type='checkbox' ${dati.fatto ? "checked" : ""} onchange='aggiornaCampo("karaoke", "${id}", "fatto", this.checked)' /></td>
+      <td><input type='checkbox' ${dati.gara ? "checked" : ""} onchange='aggiornaCampo("karaoke", "${id}", "gara", this.checked)' /></td>
+    `;
+    tabellaKaraoke.appendChild(tr);
+  });
+}
+
+db.collection("karaoke").orderBy("timestamp", "asc").onSnapshot(snapshot => {
+  datiKaraoke = [];
+  snapshot.forEach(doc => {
+    datiKaraoke.push({ id: doc.id, dati: doc.data() });
+  });
+  aggiornaFiltroKaraoke();
+});
+
       });
     });
 
