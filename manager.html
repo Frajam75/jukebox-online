@@ -47,7 +47,8 @@ $1
     <h2>🎤 Richieste Karaoke</h2>
     <table>
       <thead>
-        <tr><th>Brano</th><th>Richiedente</th><th>Dedica</th><th>Fatto</th></tr>
+        <tr><th>Brano</th><th>Richiedente</th><th>Dedica</th><th>Eseguito</th><th>In gara</th></tr>
+
       </thead>
       <tbody id="tabellaKaraoke"></tbody>
     </table>
@@ -117,12 +118,14 @@ $1
         const dati = doc.data();
         const tr = document.createElement("tr");
         if (dati.fatto) tr.classList.add("done");
-        tr.innerHTML = `
-          <td>${dati.brano}</td>
-          <td>${dati.richiedente}</td>
-          <td>${dati.dedica || ""}</td>
-          <td><input type='checkbox' ${dati.fatto ? "checked" : ""} onchange='aggiornaFatto("karaoke", "${doc.id}", this.checked)' /></td>
-        `;
+       tr.innerHTML = `
+  <td>${dati.brano}</td>
+  <td>${dati.richiedente}</td>
+  <td>${dati.dedica || ""}</td>
+  <td><input type='checkbox' ${dati.fatto ? "checked" : ""} onchange='aggiornaCampo("karaoke", "${doc.id}", "fatto", this.checked)' /></td>
+  <td><input type='checkbox' ${dati.gara ? "checked" : ""} onchange='aggiornaCampo("karaoke", "${doc.id}", "gara", this.checked)' /></td>
+`;
+       `;
         tabellaKaraoke.appendChild(tr);
       });
     });
@@ -148,8 +151,12 @@ $1
       });
     });
 
-    function aggiornaFatto(collezione, id, stato) {
-      db.collection(collezione).doc(id).update({ fatto: stato });
+   function aggiornaCampo(collezione, id, campo, valore) {
+  const aggiornamento = {};
+  aggiornamento[campo] = valore;
+  db.collection(collezione).doc(id).update(aggiornamento);
+}
+
     }
 
     function esportaCSV() {
