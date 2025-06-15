@@ -120,6 +120,7 @@ $1
    let datiKaraoke = [];
 
 function aggiornaFiltroKaraoke() {
+  localStorage.setItem("filtroKaraokeGara", document.getElementById("filtroGara").checked);
   const soloGara = document.getElementById("filtroGara").checked;
   tabellaKaraoke.innerHTML = "";
   datiKaraoke.forEach(({ id, dati }) => {
