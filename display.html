@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Messaggi Live Kikabox</title>
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      color: white;
+      font-family: 'Arial', sans-serif;
+      overflow: hidden;
+    }
+    .marquee {
+      position: absolute;
+      bottom: 40%;
+      white-space: nowrap;
+      will-change: transform;
+      animation: scrollText 30s linear infinite;
+      font-size: 2em;
+      padding: 0 100%;
+    }
+    @keyframes scrollText {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+  </style>
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.9.0/firebase-app.js';
+    import { getFirestore, collection, query, where, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.9.0/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_STORAGE_BUCKET",
+      messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const q = query(collection(db, "messaggi"), where("approvato", "==", true));
+
+    const marquee = document.createElement("div");
+    marquee.className = "marquee";
+    document.body.appendChild(marquee);
+
+    onSnapshot(q, snapshot => {
+      const texts = [];
+      snapshot.forEach(doc => {
+        const msg = doc.data();
+        texts.push(`${msg.nome || "Anonimo"}: ${msg.testo}`);
+      });
+      marquee.textContent = texts.join(" •   ");
+    });
+  </script>
+</head>
+<body>
+</body>
+</html>
